@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur de Procédé </title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: bold; color: #555; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        .results { margin-top: 30px; padding: 20px; background-color: #e9ecef; border-radius: 8px; display: none; }
+        .results h2 { margin-top: 0; color: #0056b3; }
+        .result-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
+        .result-item:last-child { border-bottom: none; }
+        .error { color: red; font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulateur de Concentration </h1>
+    
+    <form id="simulationForm">
+        <div class="grid">
+            <div class="input-group">
+                <label>Débit initial (m0 en kg/h)</label>
+                <input type="number" step="any" id="m0" required>
+            </div>
+            <div class="input-group">
+                <label>Fraction insoluble (x0)</label>
+                <input type="number" step="any" id="x0"  required>
+            </div>
+            <div class="input-group">
+                <label>Fraction soluble (y0)</label>
+                <input type="number" step="any" id="y0"  required>
+            </div>
+            <div class="input-group">
+                <label>Apport concentré (mR en kg/h)</label>
+                <input type="number" step="any" id="mR"  required>
+            </div>
+            <div class="input-group">
+                <label>Concentration de l'apport (cR)</label>
+                <input type="number" step="any" id="cR"  required>
+            </div>
+            <div class="input-group">
+                <label>Concentration finale voulue (y_final)</label>
+                <input type="number" step="any" id="y_final"  required>
+            </div>
+            <div class="input-group">
+                <label>Capacité calorifique (Cp kJ/kg.K)</label>
+                <input type="number" step="any" id="cp"  required>
+            </div>
+            <div class="input-group">
+                <label>Temp. initiale (T1 °C)</label>
+                <input type="number" step="any" id="T1"  required>
+            </div>
+            <div class="input-group">
+                <label>Temp. de chauffage (T2 °C)</label>
+                <input type="number" step="any" id="T2"  required>
+            </div>
+            <div class="input-group">
+                <label>Temp. finale (T3 °C)</label>
+                <input type="number" step="any" id="T3"  required>
+            </div>
+            <div class="input-group">
+                <label>Chaleur latente (λ kJ/kg)</label>
+                <input type="number" step="any" id="lambda_vap"  required>
+            </div>
+        </div>
+        <button type="submit">Lancer la Simulation</button>
+    </form>
+
+    <div id="results" class="results">
+        <!-- Les résultats s'afficheront ici -->
+    </div>
+</div>
+
+<script>
+    document.getElementById('simulationForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // Empêche le rechargement de la page
+
+        // Récupération des valeurs du formulaire
+        const data = {
+            m0: parseFloat(document.getElementById('m0').value),
+            x0: parseFloat(document.getElementById('x0').value),
+            y0: parseFloat(document.getElementById('y0').value),
+            mR: parseFloat(document.getElementById('mR').value),
+            cR: parseFloat(document.getElementById('cR').value),
+            y_final: parseFloat(document.getElementById('y_final').value),
+            cp: parseFloat(document.getElementById('cp').value),
+            T1: parseFloat(document.getElementById('T1').value),
+            T2: parseFloat(document.getElementById('T2').value),
+            T3: parseFloat(document.getElementById('T3').value),
+            lambda_vap: parseFloat(document.getElementById('lambda_vap').value)
+        };
+
+        // Envoi de la requête à FastAPI
+        try {
+            const response = await fetch('/simuler', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            afficherResultats(result);
+        } catch (error) {
+            console.error("Erreur:", error);
+            alert("Erreur lors de la communication avec le serveur.");
+        }
+    });
+
+    function afficherResultats(res) {
+        const div = document.getElementById('results');
+        
+        // On génère le HTML pour afficher les résultats
+        div.innerHTML = `
+            <h2>Résultats de la Simulation</h2>
+            
+            <div class="result-item">
+                <strong>1. Filtration :</strong><br>
+                Débit filtré (m1) : ${res.filtration.m1} kg/h<br>
+                Fraction soluble (y1) : ${res.filtration.y1}<br>
+                Résidus solides : ${res.filtration.residus} kg/h
+            </div>
+
+            <div class="result-item">
+                <strong>2. Mélange :</strong><br>
+                Débit total entrant (m_melange) : ${res.melange.m_melange} kg/h<br>
+                Concentration du mélange (y_melange) : ${res.melange.y_melange}
+            </div>
+
+            <div class="result-item">
+                <strong>3. Chauffage :</strong><br>
+                Puissance requise (Q3) : ${res.chauffage.Q3} kW
+            </div>
+
+            <div class="result-item">
+                <strong>4. Évaporation :</strong><br>
+                Eau évaporée (mvp) : ${res.evaporation.mvp} kg/h<br>
+                Débit du concentré final (m2) : ${res.evaporation.m2} kg/h<br>
+                Puissance d'évaporation (Q4) : ${res.evaporation.Q4} kW
+            </div>
+
+            <div class="result-item">
+                <strong>5. Refroidissement :</strong><br>
+                Puissance extraite (Q5) : ${res.refroidissement.Q5} kW
+            </div>
+
+            <div class="result-item">
+                <strong>Bilan Global :</strong><br>
+                Entrées : ${res.bilan.entrees} kg/h<br>
+                Sorties : ${res.bilan.sorties} kg/h<br>
+                Erreur : <span class="${res.bilan.erreur === 0 ? 'success' : 'error'}">${res.bilan.erreur} kg/h</span>
+            </div>
+        `;
+        
+        div.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
